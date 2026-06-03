@@ -1,5 +1,6 @@
 const STORAGE_KEY = "my-vocab-lab-state-v1";
 const CUSTOM_KEY = "my-vocab-lab-custom-words-v1";
+const CLOUD_LOAD_TIMEOUT_MS = 7000;
 const starterVocabulary = dedupeWordsByText(window.starterVocabulary || []);
 
 const statusMeta = {
@@ -2402,7 +2403,11 @@ async function loadCloudData() {
   render();
 
   try {
-    const { data, error } = await window.vocabCloud.loadUserData(userId);
+    const { data, error } = await withTimeout(
+      window.vocabCloud.loadUserData(userId),
+      CLOUD_LOAD_TIMEOUT_MS,
+      "云端读取超时"
+    );
     if (error) throw error;
 
     if (data) {
@@ -2431,6 +2436,17 @@ async function loadCloudData() {
   }
 
   render();
+}
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
 }
 
 function scheduleCloudSave() {
