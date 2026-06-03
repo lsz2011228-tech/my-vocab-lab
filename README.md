@@ -117,7 +117,7 @@ The app saves data in the browser with `localStorage`:
 - `my-vocab-lab-state-v1`
 - `my-vocab-lab-custom-words-v1`
 
-This is good for the local data layer. The current app also has a Supabase login gate, and a future version can move custom words and progress into Supabase tables for true phone/computer sync.
+The app also syncs custom words and progress to Supabase after the user signs in. `localStorage` is still kept as a local backup/cache, so the site can merge local browser data with cloud data the first time an account is used.
 
 ## Supabase login
 

@@ -52,6 +52,7 @@ If an old `localhost` link stops working, that usually means the temporary previ
 - Added Supabase email/password login gate using the project publishable key.
 - Added `supabase/schema.sql` to create the cloud sync table and RLS policies.
 - Added Supabase cloud save/load for custom words and learning progress.
+- Fixed the cloud loading state so an already-signed-in user with no existing cloud row does not stay stuck on `正在读取你的云端学习数据`.
 - Added a new Learn page.
 - Learn mode lets the user study `新单词`, `正在学`, `新单词 + 正在学`, or `容易忘` words.
 - Optimized Learn page with a three-step learning path, source preset cards, summary counts, progress bar, and clearer learning cards.

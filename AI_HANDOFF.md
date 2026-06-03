@@ -68,6 +68,7 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 - Section navigation does not change storage keys; existing local progress and custom words should survive UI restructuring.
 - Export downloads a JSON backup containing custom words and progress.
 - On sign-in, cloud data and local browser data are merged. If no cloud row exists, the app uploads the current local data.
+- The auth state callback avoids resetting `cloudReady` for the same already-signed-in user, which prevents the app from getting stuck on the cloud loading screen after Supabase sends its initial session event.
 - On local saves, `saveProgress()` and `saveCustomWords()` debounce-upload to Supabase.
 - Import reads a JSON backup from `Settings`, validates the backup shape, normalizes custom words/forms/progress, and asks for confirmation with before/after counts.
 - Import has two modes: `merge` keeps current custom words, adds non-duplicate backup words, keeps current progress when keys overlap, and filters out progress records for skipped duplicate custom-word ids; `restore` replaces current custom words and progress with the backup.
