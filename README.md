@@ -66,6 +66,8 @@ START_HERE.html
 README.md
 AI_HANDOFF.md
 PROJECT_STATUS.md
+supabase/
+  schema.sql
 ```
 
 ## Code structure
@@ -125,6 +127,17 @@ The app loads Supabase from the official CDN package and creates a browser clien
 - Key type used in the app: publishable key
 
 Do not put a `secret` key, `service_role` key, or database password in the frontend files.
+
+## Supabase cloud sync
+
+Run `supabase/schema.sql` in the Supabase SQL Editor before using cloud sync. It creates `public.user_vocab_data` with Row Level Security policies so each signed-in user can only read and write their own vocabulary data.
+
+Cloud sync stores:
+
+- `custom_words`: custom words added by the signed-in user.
+- `progress`: learning status, scores, and review timestamps.
+
+The first time a signed-in user opens the app, local browser data is merged with cloud data. If no cloud row exists yet, the app creates one from the current local data.
 
 Use `Settings -> 导出备份` to download a JSON backup.
 

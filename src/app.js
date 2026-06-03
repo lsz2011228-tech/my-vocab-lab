@@ -60,13 +60,21 @@ let currentSession = null;
 let authMode = "sign-in";
 let authMessage = null;
 let authBusy = false;
+let cloudReady = false;
+let cloudMessage = null;
+let cloudSaveTimer = null;
+let cloudSaveBusy = false;
+let cloudLastSavedAt = null;
+let loadedCloudUserId = null;
 
 function saveProgress() {
   saveJson(STORAGE_KEY, progress);
+  scheduleCloudSave();
 }
 
 function saveCustomWords() {
   saveJson(CUSTOM_KEY, customWords);
+  scheduleCloudSave();
 }
 
 function allWords() {
@@ -176,6 +184,11 @@ function render() {
     return;
   }
 
+  if (!cloudReady) {
+    app.innerHTML = renderCloudLoading();
+    return;
+  }
+
   const stats = getStats();
   const filteredWords = getFilteredWords();
 
@@ -188,6 +201,7 @@ function render() {
           <p class="app-subtitle">A personal English workspace for school words, writing, and daily life.</p>
         </div>
         <div class="topbar-actions">
+          <span class="cloud-pill ${cloudMessage?.type || "idle"}">${escapeHtml(getCloudStatusText())}</span>
           <span class="account-pill">${escapeHtml(getUserEmail())}</span>
           <button class="icon-button" id="exportBtn" title="Export vocabulary backup" aria-label="Export vocabulary backup">⇩</button>
           <button class="secondary compact" id="signOutBtn" type="button">退出</button>
@@ -200,6 +214,18 @@ function render() {
   `;
 
   bindEvents();
+}
+
+function renderCloudLoading() {
+  return `
+    <main class="auth-shell">
+      <section class="auth-card">
+        <p class="eyebrow">Cloud sync</p>
+        <h1>My Vocab Lab</h1>
+        <p class="auth-copy">正在读取你的云端学习数据...</p>
+      </section>
+    </main>
+  `;
 }
 
 function renderAuthUnavailable() {
@@ -258,6 +284,13 @@ function renderAuthView() {
 
 function getUserEmail() {
   return currentSession?.user?.email || "已登录";
+}
+
+function getCloudStatusText() {
+  if (cloudSaveBusy) return "云端保存中";
+  if (cloudMessage?.text) return cloudMessage.text;
+  if (cloudLastSavedAt) return "已云端同步";
+  return "云端已连接";
 }
 
 function renderNavigation() {
@@ -2255,21 +2288,35 @@ async function initAuth() {
     const { data, error } = await window.vocabCloud.getSession();
     if (error) throw error;
     currentSession = data.session;
+    authReady = true;
+    render();
+    if (currentSession) await loadCloudData();
   } catch (error) {
     authMessage = {
       type: "error",
       text: error.message || "登录状态检查失败。"
     };
-  } finally {
     authReady = true;
     render();
   }
 
-  window.vocabCloud.onAuthStateChange((_event, session) => {
+  window.vocabCloud.onAuthStateChange(async (_event, session) => {
+    const previousUserId = currentSession?.user?.id;
+    const nextUserId = session?.user?.id;
     currentSession = session;
     authMessage = null;
     authBusy = false;
+    cloudReady = false;
+    cloudMessage = null;
     render();
+
+    if (nextUserId && nextUserId !== previousUserId) {
+      await loadCloudData();
+    } else if (!nextUserId) {
+      loadedCloudUserId = null;
+      cloudReady = false;
+      render();
+    }
   });
 }
 
@@ -2299,6 +2346,7 @@ async function submitAuthForm(event) {
     if (result.error) throw result.error;
 
     currentSession = result.data.session || currentSession;
+    if (currentSession) await loadCloudData();
     authMessage = {
       type: "success",
       text:
@@ -2321,12 +2369,145 @@ async function submitAuthForm(event) {
 async function signOut() {
   authBusy = true;
   try {
+    await saveCloudNow();
     await window.vocabCloud.signOut();
   } finally {
     currentSession = null;
+    cloudReady = false;
+    cloudMessage = null;
+    cloudLastSavedAt = null;
+    loadedCloudUserId = null;
     authBusy = false;
     render();
   }
+}
+
+async function loadCloudData() {
+  const userId = currentSession?.user?.id;
+  if (!userId || !window.vocabCloud?.isAvailable) return;
+  if (loadedCloudUserId === userId && cloudReady) return;
+
+  cloudReady = false;
+  cloudMessage = null;
+  render();
+
+  try {
+    const { data, error } = await window.vocabCloud.loadUserData(userId);
+    if (error) throw error;
+
+    if (data) {
+      customWords = mergeCustomWordLists(normalizeCloudWords(data.custom_words), customWords);
+      progress = mergeProgress(normalizeCloudProgress(data.progress), progress);
+      cloudLastSavedAt = data.updated_at || null;
+    }
+
+    saveJson(CUSTOM_KEY, customWords);
+    saveJson(STORAGE_KEY, progress);
+    loadedCloudUserId = userId;
+    cloudReady = true;
+    cloudMessage = {
+      type: "success",
+      text: data ? "已读取云端" : "新账号云端已准备"
+    };
+
+    await saveCloudNow();
+  } catch (error) {
+    cloudReady = true;
+    cloudMessage = {
+      type: "error",
+      text: "云端同步失败"
+    };
+    console.warn("Cloud data load failed.", error);
+  }
+
+  render();
+}
+
+function scheduleCloudSave() {
+  if (!currentSession?.user?.id || !cloudReady || !window.vocabCloud?.isAvailable) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => {
+    saveCloudNow();
+  }, 700);
+}
+
+async function saveCloudNow() {
+  if (!currentSession?.user?.id || !window.vocabCloud?.isAvailable) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = null;
+  cloudSaveBusy = true;
+  cloudMessage = { type: "idle", text: "云端保存中" };
+  render();
+
+  try {
+    const { data, error } = await window.vocabCloud.saveUserData(currentSession.user.id, customWords, progress);
+    if (error) throw error;
+    cloudLastSavedAt = data?.updated_at || new Date().toISOString();
+    cloudMessage = { type: "success", text: "已云端同步" };
+  } catch (error) {
+    cloudMessage = { type: "error", text: "云端保存失败" };
+    console.warn("Cloud data save failed.", error);
+  } finally {
+    cloudSaveBusy = false;
+    render();
+  }
+}
+
+function normalizeCloudWords(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      try {
+        return normalizeImportedWord(item, index);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function normalizeCloudProgress(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return normalizeImportedProgress(value);
+}
+
+function mergeCustomWordLists(primaryWords, secondaryWords) {
+  const seenIds = new Set();
+  const seenWords = new Set();
+  const merged = [];
+
+  [...primaryWords, ...secondaryWords].forEach((item) => {
+    const id = cleanImportedText(item.id);
+    const wordKey = normaliseAnswer(item.word);
+    if (!id || !wordKey || seenIds.has(id) || seenWords.has(wordKey)) return;
+    seenIds.add(id);
+    seenWords.add(wordKey);
+    merged.push(item);
+  });
+
+  return merged;
+}
+
+function mergeProgress(primaryProgress, secondaryProgress) {
+  const merged = { ...primaryProgress };
+
+  Object.entries(secondaryProgress).forEach(([id, value]) => {
+    if (!merged[id] || isProgressNewer(value, merged[id])) {
+      merged[id] = value;
+    }
+  });
+
+  return merged;
+}
+
+function isProgressNewer(nextValue, currentValue) {
+  const nextTime = Date.parse(nextValue?.lastReviewed || "");
+  const currentTime = Date.parse(currentValue?.lastReviewed || "");
+
+  if (Number.isFinite(nextTime) && Number.isFinite(currentTime)) return nextTime > currentTime;
+  if (Number.isFinite(nextTime)) return true;
+  if (Number.isFinite(currentTime)) return false;
+  return Number(nextValue?.score || 0) > Number(currentValue?.score || 0);
 }
 
 render();

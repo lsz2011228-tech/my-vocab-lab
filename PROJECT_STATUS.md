@@ -50,6 +50,8 @@ If an old `localhost` link stops working, that usually means the temporary previ
 - Added `src/data/csvPacks.js` for automatic built-in CSV pack loading, so the published website opens with 277 built-in words automatically.
 - Added duplicate protection while combining starter words with the two built-in CSV packs.
 - Added Supabase email/password login gate using the project publishable key.
+- Added `supabase/schema.sql` to create the cloud sync table and RLS policies.
+- Added Supabase cloud save/load for custom words and learning progress.
 - Added a new Learn page.
 - Learn mode lets the user study `新单词`, `正在学`, `新单词 + 正在学`, or `容易忘` words.
 - Optimized Learn page with a three-step learning path, source preset cards, summary counts, progress bar, and clearer learning cards.
@@ -77,13 +79,14 @@ If an old `localhost` link stops working, that usually means the temporary previ
 - JSON backup export/import.
 - CSV word-list import.
 - Supabase login/register/sign-out gate.
+- Supabase cloud sync for custom words and progress.
 
 ## Supabase status
 
 - Project URL: `https://aahrmanmulxjxjttfboj.supabase.co`
 - Frontend key type: publishable key
 - Login gate: implemented
-- Cloud database sync: not implemented yet
+- Cloud database sync: implemented after running `supabase/schema.sql`
 - Important: never add a Supabase secret key, service role key, or database password to frontend files.
 
 ## Verified checks
@@ -109,6 +112,7 @@ Also tested with simulated page checks:
 - `word-packs/year9-australia-pack-2-100.csv` was checked as a second CSV pack: 100 data rows, 0 duplicate words against the starter pack and pack 1, 0 missing required fields.
 - Built-in vocabulary count was checked: 77 starter words + 200 extra-pack words = 277 built-in words.
 - Supabase auth files passed JavaScript syntax checks.
+- Supabase cloud sync code passed JavaScript syntax checks.
 - Learn page renders and updates word status correctly in simulation.
 - Words bulk status changes update the filtered word set correctly in simulation.
 - Quiz range UI renders.
@@ -139,7 +143,7 @@ Use `Settings -> 导出备份` regularly. Keep the JSON backup somewhere safe, s
 3. Add more word family data for starter words.
 4. Add spaced repetition dates so review timing becomes smarter.
 5. Add PWA support so the site can be installed like an app on phone/tablet.
-6. Add Supabase database tables, Row Level Security policies, and cloud save/load for custom words and progress.
+6. Run `supabase/schema.sql` in Supabase SQL Editor, then test sync between computer and phone.
 
 ## Advice for the next AI
 

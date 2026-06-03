@@ -1,5 +1,6 @@
 const SUPABASE_URL = "https://aahrmanmulxjxjttfboj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_RrDuHGzrQQZc7U1d0BD5pw_hmk2Enlx";
+const VOCAB_DATA_TABLE = "user_vocab_data";
 
 window.vocabCloud = (() => {
   const hasSupabase = Boolean(window.supabase?.createClient);
@@ -30,6 +31,26 @@ window.vocabCloud = (() => {
         }
       }),
     signOut: () => client.auth.signOut(),
-    onAuthStateChange: (callback) => client.auth.onAuthStateChange(callback)
+    onAuthStateChange: (callback) => client.auth.onAuthStateChange(callback),
+    loadUserData: (userId) =>
+      client
+        .from(VOCAB_DATA_TABLE)
+        .select("custom_words, progress, updated_at")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    saveUserData: (userId, customWords, progress) =>
+      client
+        .from(VOCAB_DATA_TABLE)
+        .upsert(
+          {
+            user_id: userId,
+            custom_words: customWords,
+            progress,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "user_id" }
+        )
+        .select("updated_at")
+        .single()
   };
 })();

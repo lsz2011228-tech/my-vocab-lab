@@ -17,6 +17,7 @@ Help a Year 9 student newly studying in Australia build practical school English
 - Styling: `src/styles/main.css`
 - Visual asset: `assets/study-banner.png`
 - Generated CSV word packs: `word-packs/`
+- Supabase setup SQL: `supabase/schema.sql`
 - Utility files:
   - `src/utils/cloud.js`: Supabase URL, publishable key, and auth helpers
   - `src/utils/html.js`: `escapeHtml`
@@ -44,7 +45,7 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 - Progress and custom words are saved to browser `localStorage`.
 - Supabase email/password auth is connected as a login gate. Users must sign in before entering the app.
 - `src/utils/cloud.js` uses the project URL `https://aahrmanmulxjxjttfboj.supabase.co` and a publishable key. Never put a Supabase `secret`, `service_role`, or database password in frontend files.
-- Cloud database sync is not implemented yet; after login, custom words and progress still save to browser `localStorage`.
+- Cloud database sync is implemented through `public.user_vocab_data` after `supabase/schema.sql` is run in Supabase. The app still keeps `localStorage` as a local backup/cache.
 - The published app now opens with 277 built-in words: 77 starter words plus 200 generated extra-pack words.
 - Built-in vocabulary entries must keep stable unique `id` values.
 - User-created words are stored separately from the starter pack.
@@ -66,6 +67,8 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 - Pronunciation uses browser `speechSynthesis`, so no audio files are stored. It reads `item.word` for built-in and custom words, preferring `en-AU` when available.
 - Section navigation does not change storage keys; existing local progress and custom words should survive UI restructuring.
 - Export downloads a JSON backup containing custom words and progress.
+- On sign-in, cloud data and local browser data are merged. If no cloud row exists, the app uploads the current local data.
+- On local saves, `saveProgress()` and `saveCustomWords()` debounce-upload to Supabase.
 - Import reads a JSON backup from `Settings`, validates the backup shape, normalizes custom words/forms/progress, and asks for confirmation with before/after counts.
 - Import has two modes: `merge` keeps current custom words, adds non-duplicate backup words, keeps current progress when keys overlap, and filters out progress records for skipped duplicate custom-word ids; `restore` replaces current custom words and progress with the backup.
 
@@ -77,7 +80,7 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 4. Add optional real dictionary audio if browser speech quality is not enough.
 5. Add spaced repetition dates.
 6. Add mobile install/PWA support.
-7. Add Supabase database tables and RLS policies for custom-word/progress sync.
+7. Test Supabase sync on two devices, then consider showing a clearer sync history/status panel.
 
 ## Style guidance
 

@@ -78,6 +78,32 @@ button {
   font-weight: 760;
 }
 
+.cloud-pill {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.cloud-pill.success {
+  border-color: #b9ddda;
+  background: var(--teal-soft);
+  color: var(--teal-dark);
+}
+
+.cloud-pill.error {
+  border-color: #f1b7b0;
+  background: #fff0ee;
+  color: #8d3028;
+}
+
 .compact {
   min-height: 42px;
   padding-inline: 14px;
