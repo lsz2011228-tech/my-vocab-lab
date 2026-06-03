@@ -2303,20 +2303,30 @@ async function initAuth() {
   window.vocabCloud.onAuthStateChange(async (_event, session) => {
     const previousUserId = currentSession?.user?.id;
     const nextUserId = session?.user?.id;
+    const userChanged = Boolean(nextUserId && nextUserId !== previousUserId);
+    const signedOut = !nextUserId;
+
     currentSession = session;
     authMessage = null;
     authBusy = false;
-    cloudReady = false;
-    cloudMessage = null;
-    render();
 
-    if (nextUserId && nextUserId !== previousUserId) {
+    if (userChanged) {
+      cloudReady = false;
+      cloudMessage = null;
+      render();
       await loadCloudData();
-    } else if (!nextUserId) {
+      return;
+    }
+
+    if (signedOut) {
       loadedCloudUserId = null;
       cloudReady = false;
+      cloudMessage = null;
       render();
+      return;
     }
+
+    render();
   });
 }
 
