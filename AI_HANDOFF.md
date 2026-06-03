@@ -13,6 +13,7 @@ Help a Year 9 student newly studying in Australia build practical school English
 - Current project summary: `PROJECT_STATUS.md`
 - Main logic: `src/app.js`
 - Starter word data: `src/data/vocabulary.js`
+- Built-in CSV pack loader: `src/data/csvPacks.js`
 - Styling: `src/styles/main.css`
 - Visual asset: `assets/study-banner.png`
 - Generated CSV word packs: `word-packs/`
@@ -40,12 +41,15 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 ## Important behavior
 
 - Progress and custom words are saved to browser `localStorage`.
+- The published app now opens with 277 built-in words: 77 starter words plus 200 generated extra-pack words.
 - Built-in vocabulary entries must keep stable unique `id` values.
 - User-created words are stored separately from the starter pack.
 - CSV batch import lives in `src/app.js` and reads files from the Add view. Required columns are `word`, `meaningZh`, `definition`, and `example`; optional columns include `category`, `level`, `notes`, and word family keys.
 - CSV import skips duplicate words against all current words, adds valid rows to `customWords`, lets the user choose whether imported words start as `new` or `learning`, and reports added/skipped/error counts.
 - `word-packs/year9-australia-pack-100.csv` contains 100 extra Year 9 vocabulary words generated for import. It was checked with the app's CSV parser: 100 importable rows, 0 duplicates against the starter pack, 0 row errors.
 - `word-packs/year9-australia-pack-2-100.csv` contains the second 100-word CSV pack. It was checked against the starter pack and pack 1: 100 data rows, 0 duplicate words, 0 missing required fields.
+- `src/data/csvPacks.js` loads those two CSV files from `word-packs/` as built-in vocabulary before `src/app.js` starts.
+- `src/data/csvPacks.js` dedupes starter and CSV-pack words by English word text while building the published built-in pack.
 - Word family support is optional per word through a `forms` object with keys such as `noun`, `verb`, `adjective`, `adverb`, `past`, `participle`, `ing`, and `plural`.
 - Search includes `forms`, so derived forms can surface the root word card.
 - Words view has a bulk status panel. It applies the chosen status to the current `getFilteredWords()` result after confirmation.
@@ -63,7 +67,7 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 
 ## Recommended next features
 
-1. Import `word-packs/year9-australia-pack-100.csv` and `word-packs/year9-australia-pack-2-100.csv` through the Add page and check the new words in Learn/Quiz.
+1. Check the GitHub Pages site opens with 277 words on a fresh browser.
 2. Generate future CSV packs by subject if the first two packs feel useful.
 3. Fill word family data for more starter words.
 4. Add optional real dictionary audio if browser speech quality is not enough.

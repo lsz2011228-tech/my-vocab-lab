@@ -47,6 +47,8 @@ If an old `localhost` link stops working, that usually means the temporary previ
 - CSV import now lets the user choose whether imported words start as `新单词` or `正在学`.
 - Generated `word-packs/year9-australia-pack-100.csv` with 100 extra Year 9 vocabulary words.
 - Generated `word-packs/year9-australia-pack-2-100.csv` with a second 100-word Year 9 vocabulary pack.
+- Added `src/data/csvPacks.js` for automatic built-in CSV pack loading, so the published website opens with 277 built-in words automatically.
+- Added duplicate protection while combining starter words with the two built-in CSV packs.
 - Added a new Learn page.
 - Learn mode lets the user study `新单词`, `正在学`, `新单词 + 正在学`, or `容易忘` words.
 - Optimized Learn page with a three-step learning path, source preset cards, summary counts, progress bar, and clearer learning cards.
@@ -94,6 +96,7 @@ Also tested with simulated page checks:
 - CSV import accepts valid rows, skips duplicates, and records row errors.
 - `word-packs/year9-australia-pack-100.csv` was checked with the app CSV parser: 100 importable rows, 0 duplicate rows against the starter pack, 0 row errors.
 - `word-packs/year9-australia-pack-2-100.csv` was checked as a second CSV pack: 100 data rows, 0 duplicate words against the starter pack and pack 1, 0 missing required fields.
+- Built-in vocabulary count was checked: 77 starter words + 200 extra-pack words = 277 built-in words.
 - Learn page renders and updates word status correctly in simulation.
 - Words bulk status changes update the filtered word set correctly in simulation.
 - Quiz range UI renders.
@@ -119,7 +122,7 @@ Use `Settings -> 导出备份` regularly. Keep the JSON backup somewhere safe, s
 
 ## Recommended next steps
 
-1. Import `word-packs/year9-australia-pack-100.csv` and `word-packs/year9-australia-pack-2-100.csv` through the Add page.
+1. Open the GitHub Pages site and confirm it shows 277 words on phone and computer.
 2. Add larger word packs by category, such as School, Science, Writing, Daily Life, and Humanities.
 3. Add more word family data for starter words.
 4. Add spaced repetition dates so review timing becomes smarter.

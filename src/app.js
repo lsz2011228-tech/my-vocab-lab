@@ -1,6 +1,10 @@
 const STORAGE_KEY = "my-vocab-lab-state-v1";
 const CUSTOM_KEY = "my-vocab-lab-custom-words-v1";
-const starterVocabulary = window.starterVocabulary || [];
+const starterVocabulary = dedupeWordsByText(window.starterVocabulary || []);
+const BUILT_IN_CSV_PACKS = [
+  { path: "./word-packs/year9-australia-pack-100.csv", prefix: "pack1" },
+  { path: "./word-packs/year9-australia-pack-2-100.csv", prefix: "pack2" }
+];
 
 const statusMeta = {
   new: { label: "新单词", rank: 1 },
@@ -55,6 +59,7 @@ let importMessage = null;
 let importMode = "merge";
 let csvImportMessage = null;
 let csvImportStatus = "new";
+let builtInPackVocabulary = [];
 
 function saveProgress() {
   saveJson(STORAGE_KEY, progress);
@@ -65,7 +70,68 @@ function saveCustomWords() {
 }
 
 function allWords() {
-  return [...starterVocabulary, ...customWords];
+  return dedupeWordsByText([...starterVocabulary, ...builtInPackVocabulary, ...customWords]);
+}
+
+function dedupeWordsByText(words) {
+  const seen = new Set();
+  return words.filter((item) => {
+    const key = normaliseAnswer(item?.word || "");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function loadBuiltInCsvPacks() {
+  try {
+    const packGroups = await Promise.all(
+      BUILT_IN_CSV_PACKS.map(async (pack) => {
+        const response = await fetch(pack.path);
+        if (!response.ok) throw new Error(`${pack.path} returned ${response.status}`);
+        return csvRowsToBuiltInWords(await response.text(), pack.prefix);
+      })
+    );
+
+    builtInPackVocabulary = dedupeWordsByText(packGroups.flat());
+    render();
+  } catch (error) {
+    console.warn("Built-in CSV word packs could not be loaded.", error);
+  }
+}
+
+function csvRowsToBuiltInWords(text, prefix) {
+  const rows = parseCsvRows(text);
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map(normalizeCsvHeader);
+  return rows
+    .slice(1)
+    .map((row, index) => {
+      const lineNumber = index + 2;
+      const record = Object.fromEntries(headers.map((key, cellIndex) => [key, cleanImportedText(row[cellIndex])]));
+      if (!record.word || !record.meaningZh || !record.definition || !record.example) return null;
+
+      return {
+        id: `${prefix}-${makeWordSlug(record.word, lineNumber)}`,
+        word: record.word,
+        meaningZh: record.meaningZh,
+        definition: record.definition,
+        example: record.example,
+        category: record.category || "My Words",
+        level: record.level || "Useful",
+        notes: record.notes || "",
+        forms: collectFormsFromCsvRecord(record)
+      };
+    })
+    .filter(Boolean);
+}
+
+function makeWordSlug(word, fallback) {
+  const slug = normaliseAnswer(word)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return slug || `word-${fallback}`;
 }
 
 function wordStatus(id) {
@@ -1961,7 +2027,7 @@ async function importBackup(event) {
 function makeMergeImportPlan(backup) {
   const beforeCustomCount = customWords.length;
   const beforeProgressCount = Object.keys(progress).length;
-  const beforeTotalCount = starterVocabulary.length + beforeCustomCount;
+  const beforeTotalCount = allWords().length;
   const knownIds = new Set(customWords.map((item) => item.id));
   const knownWords = new Set(customWords.map(getImportWordKey));
   const wordsToAdd = [];
@@ -1998,7 +2064,7 @@ function makeMergeImportPlan(backup) {
     nextProgress,
     afterCustomCount: nextCustomWords.length,
     afterProgressCount: Object.keys(nextProgress).length,
-    afterTotalCount: starterVocabulary.length + nextCustomWords.length
+    afterTotalCount: starterVocabulary.length + builtInPackVocabulary.length + nextCustomWords.length
   };
 }
 
@@ -2010,7 +2076,7 @@ function makeRestoreImportPlan(backup) {
     mode: "restore",
     beforeCustomCount: customWords.length,
     beforeProgressCount: Object.keys(progress).length,
-    beforeTotalCount: starterVocabulary.length + customWords.length,
+    beforeTotalCount: allWords().length,
     backupCustomCount: backup.customWords.length,
     backupProgressCount: Object.keys(backup.progress).length,
     addedCount: backup.customWords.length,
@@ -2019,7 +2085,7 @@ function makeRestoreImportPlan(backup) {
     nextProgress,
     afterCustomCount: nextCustomWords.length,
     afterProgressCount: Object.keys(nextProgress).length,
-    afterTotalCount: starterVocabulary.length + nextCustomWords.length
+    afterTotalCount: starterVocabulary.length + builtInPackVocabulary.length + nextCustomWords.length
   };
 }
 
@@ -2144,3 +2210,4 @@ function cleanImportedText(value) {
 }
 
 render();
+loadBuiltInCsvPacks();

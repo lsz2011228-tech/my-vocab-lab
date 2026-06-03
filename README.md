@@ -13,6 +13,7 @@ Do not rely on an old `localhost` link unless a preview server is currently runn
 - Six-section app structure: Home, Words, Learn, Quiz, Add, and Settings.
 - Responsive app-style UI with a dashboard Home view and mobile bottom navigation.
 - Built-in starter vocabulary pack.
+- Built-in extra vocabulary packs loaded from CSV, so the published website opens with 277 words before any personal imports.
 - Search by English, Chinese, definition, example, or note.
 - Search by word family forms, such as finding `improve` when searching `improvement`.
 - Filter by category, level, and learning status.
@@ -50,6 +51,7 @@ word-packs/
   year9-australia-pack-2-100.csv
 src/
   app.js
+  data/csvPacks.js
   data/vocabulary.js
   styles/main.css
   utils/
@@ -67,6 +69,7 @@ PROJECT_STATUS.md
 ## Code structure
 
 - `src/app.js`: main app state, page rendering, navigation, quiz, review, and word actions.
+- `src/data/csvPacks.js`: loads the two CSV packs into the built-in vocabulary before the app starts.
 - `src/utils/storage.js`: localStorage helpers.
 - `src/utils/wordForms.js`: word family parsing, search tokens, and display.
 - `src/utils/speech.js`: pronunciation button and browser speech.
@@ -151,6 +154,8 @@ A ready-made pack is included:
 - `word-packs/year9-australia-pack-2-100.csv`
 
 Import these files from the Add page to add extra Year 9 vocabulary words. Each pack contains 100 words and is designed to be imported as a CSV file.
+
+The published app also loads these two packs as built-in vocabulary from the `word-packs/` folder, so a fresh browser opens with 277 words automatically. The CSV files are still kept as reusable import/export-style word pack files.
 
 ## Pronunciation
 
