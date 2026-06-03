@@ -49,6 +49,7 @@ If an old `localhost` link stops working, that usually means the temporary previ
 - Generated `word-packs/year9-australia-pack-2-100.csv` with a second 100-word Year 9 vocabulary pack.
 - Added `src/data/csvPacks.js` for automatic built-in CSV pack loading, so the published website opens with 277 built-in words automatically.
 - Added duplicate protection while combining starter words with the two built-in CSV packs.
+- Added Supabase email/password login gate using the project publishable key.
 - Added a new Learn page.
 - Learn mode lets the user study `新单词`, `正在学`, `新单词 + 正在学`, or `容易忘` words.
 - Optimized Learn page with a three-step learning path, source preset cards, summary counts, progress bar, and clearer learning cards.
@@ -75,6 +76,15 @@ If an old `localhost` link stops working, that usually means the temporary previ
 - Local saving with browser `localStorage`.
 - JSON backup export/import.
 - CSV word-list import.
+- Supabase login/register/sign-out gate.
+
+## Supabase status
+
+- Project URL: `https://aahrmanmulxjxjttfboj.supabase.co`
+- Frontend key type: publishable key
+- Login gate: implemented
+- Cloud database sync: not implemented yet
+- Important: never add a Supabase secret key, service role key, or database password to frontend files.
 
 ## Verified checks
 
@@ -86,6 +96,7 @@ The following code checks passed:
 - `src/utils/wordForms.js`
 - `src/utils/speech.js`
 - `src/data/vocabulary.js`
+- `src/utils/cloud.js`
 
 Also tested with simulated page checks:
 
@@ -97,6 +108,7 @@ Also tested with simulated page checks:
 - `word-packs/year9-australia-pack-100.csv` was checked with the app CSV parser: 100 importable rows, 0 duplicate rows against the starter pack, 0 row errors.
 - `word-packs/year9-australia-pack-2-100.csv` was checked as a second CSV pack: 100 data rows, 0 duplicate words against the starter pack and pack 1, 0 missing required fields.
 - Built-in vocabulary count was checked: 77 starter words + 200 extra-pack words = 277 built-in words.
+- Supabase auth files passed JavaScript syntax checks.
 - Learn page renders and updates word status correctly in simulation.
 - Words bulk status changes update the filtered word set correctly in simulation.
 - Quiz range UI renders.
@@ -127,7 +139,7 @@ Use `Settings -> 导出备份` regularly. Keep the JSON backup somewhere safe, s
 3. Add more word family data for starter words.
 4. Add spaced repetition dates so review timing becomes smarter.
 5. Add PWA support so the site can be installed like an app on phone/tablet.
-6. Later, consider cloud sync or account login if phone/computer syncing becomes important.
+6. Add Supabase database tables, Row Level Security policies, and cloud save/load for custom words and progress.
 
 ## Advice for the next AI
 

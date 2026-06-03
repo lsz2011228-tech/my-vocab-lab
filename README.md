@@ -29,6 +29,7 @@ Do not rely on an old `localhost` link unless a preview server is currently runn
 - Unified Quiz range mode with quick presets, category, level, status, and practice-count filters.
 - Pronunciation buttons for built-in and custom words using the browser's speech feature.
 - Browser local saving for custom words and progress.
+- Supabase email/password login gate for private access.
 - Export a JSON backup of custom words and progress.
 - Import a JSON backup with either safe merge mode or full restore mode.
 
@@ -55,6 +56,7 @@ src/
   data/vocabulary.js
   styles/main.css
   utils/
+    cloud.js
     html.js
     speech.js
     storage.js
@@ -70,6 +72,7 @@ PROJECT_STATUS.md
 
 - `src/app.js`: main app state, page rendering, navigation, quiz, review, and word actions.
 - `src/data/csvPacks.js`: loads the two CSV packs into the built-in vocabulary before the app starts.
+- `src/utils/cloud.js`: Supabase project URL, publishable key, and auth client setup.
 - `src/utils/storage.js`: localStorage helpers.
 - `src/utils/wordForms.js`: word family parsing, search tokens, and display.
 - `src/utils/speech.js`: pronunciation button and browser speech.
@@ -112,7 +115,16 @@ The app saves data in the browser with `localStorage`:
 - `my-vocab-lab-state-v1`
 - `my-vocab-lab-custom-words-v1`
 
-This is good for a simple first version. A future version can add cloud sync or accounts.
+This is good for the local data layer. The current app also has a Supabase login gate, and a future version can move custom words and progress into Supabase tables for true phone/computer sync.
+
+## Supabase login
+
+The app loads Supabase from the official CDN package and creates a browser client in `src/utils/cloud.js`.
+
+- Project URL: `https://aahrmanmulxjxjttfboj.supabase.co`
+- Key type used in the app: publishable key
+
+Do not put a `secret` key, `service_role` key, or database password in the frontend files.
 
 Use `Settings -> 导出备份` to download a JSON backup.
 

@@ -1,10 +1,6 @@
 const STORAGE_KEY = "my-vocab-lab-state-v1";
 const CUSTOM_KEY = "my-vocab-lab-custom-words-v1";
 const starterVocabulary = dedupeWordsByText(window.starterVocabulary || []);
-const BUILT_IN_CSV_PACKS = [
-  { path: "./word-packs/year9-australia-pack-100.csv", prefix: "pack1" },
-  { path: "./word-packs/year9-australia-pack-2-100.csv", prefix: "pack2" }
-];
 
 const statusMeta = {
   new: { label: "新单词", rank: 1 },
@@ -59,7 +55,11 @@ let importMessage = null;
 let importMode = "merge";
 let csvImportMessage = null;
 let csvImportStatus = "new";
-let builtInPackVocabulary = [];
+let authReady = false;
+let currentSession = null;
+let authMode = "sign-in";
+let authMessage = null;
+let authBusy = false;
 
 function saveProgress() {
   saveJson(STORAGE_KEY, progress);
@@ -70,7 +70,7 @@ function saveCustomWords() {
 }
 
 function allWords() {
-  return dedupeWordsByText([...starterVocabulary, ...builtInPackVocabulary, ...customWords]);
+  return dedupeWordsByText([...starterVocabulary, ...customWords]);
 }
 
 function dedupeWordsByText(words) {
@@ -81,57 +81,6 @@ function dedupeWordsByText(words) {
     seen.add(key);
     return true;
   });
-}
-
-async function loadBuiltInCsvPacks() {
-  try {
-    const packGroups = await Promise.all(
-      BUILT_IN_CSV_PACKS.map(async (pack) => {
-        const response = await fetch(pack.path);
-        if (!response.ok) throw new Error(`${pack.path} returned ${response.status}`);
-        return csvRowsToBuiltInWords(await response.text(), pack.prefix);
-      })
-    );
-
-    builtInPackVocabulary = dedupeWordsByText(packGroups.flat());
-    render();
-  } catch (error) {
-    console.warn("Built-in CSV word packs could not be loaded.", error);
-  }
-}
-
-function csvRowsToBuiltInWords(text, prefix) {
-  const rows = parseCsvRows(text);
-  if (rows.length < 2) return [];
-
-  const headers = rows[0].map(normalizeCsvHeader);
-  return rows
-    .slice(1)
-    .map((row, index) => {
-      const lineNumber = index + 2;
-      const record = Object.fromEntries(headers.map((key, cellIndex) => [key, cleanImportedText(row[cellIndex])]));
-      if (!record.word || !record.meaningZh || !record.definition || !record.example) return null;
-
-      return {
-        id: `${prefix}-${makeWordSlug(record.word, lineNumber)}`,
-        word: record.word,
-        meaningZh: record.meaningZh,
-        definition: record.definition,
-        example: record.example,
-        category: record.category || "My Words",
-        level: record.level || "Useful",
-        notes: record.notes || "",
-        forms: collectFormsFromCsvRecord(record)
-      };
-    })
-    .filter(Boolean);
-}
-
-function makeWordSlug(word, fallback) {
-  const slug = normaliseAnswer(word)
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return slug || `word-${fallback}`;
 }
 
 function wordStatus(id) {
@@ -211,6 +160,22 @@ function getStats() {
 }
 
 function render() {
+  if (!window.vocabCloud?.isAvailable) {
+    app.innerHTML = renderAuthUnavailable();
+    return;
+  }
+
+  if (!authReady) {
+    app.innerHTML = renderAuthLoading();
+    return;
+  }
+
+  if (!currentSession) {
+    app.innerHTML = renderAuthView();
+    bindEvents();
+    return;
+  }
+
   const stats = getStats();
   const filteredWords = getFilteredWords();
 
@@ -222,7 +187,11 @@ function render() {
           <h1>My Vocab Lab</h1>
           <p class="app-subtitle">A personal English workspace for school words, writing, and daily life.</p>
         </div>
-        <button class="icon-button" id="exportBtn" title="Export vocabulary backup" aria-label="Export vocabulary backup">⇩</button>
+        <div class="topbar-actions">
+          <span class="account-pill">${escapeHtml(getUserEmail())}</span>
+          <button class="icon-button" id="exportBtn" title="Export vocabulary backup" aria-label="Export vocabulary backup">⇩</button>
+          <button class="secondary compact" id="signOutBtn" type="button">退出</button>
+        </div>
       </section>
 
       ${renderNavigation()}
@@ -231,6 +200,64 @@ function render() {
   `;
 
   bindEvents();
+}
+
+function renderAuthUnavailable() {
+  return `
+    <main class="auth-shell">
+      <section class="auth-card">
+        <p class="eyebrow">Cloud sign in</p>
+        <h1>My Vocab Lab</h1>
+        <p class="auth-copy">云端登录没有加载成功。请检查网络，或者确认 Supabase 设置文件还在。</p>
+      </section>
+    </main>
+  `;
+}
+
+function renderAuthLoading() {
+  return `
+    <main class="auth-shell">
+      <section class="auth-card">
+        <p class="eyebrow">Checking account</p>
+        <h1>My Vocab Lab</h1>
+        <p class="auth-copy">正在检查登录状态...</p>
+      </section>
+    </main>
+  `;
+}
+
+function renderAuthView() {
+  const isSignUp = authMode === "sign-up";
+  return `
+    <main class="auth-shell">
+      <section class="auth-card">
+        <div>
+          <p class="eyebrow">Private vocabulary lab</p>
+          <h1>My Vocab Lab</h1>
+          <p class="auth-copy">登录后才能进入词库。之后手机、电脑会用同一个账号同步学习数据。</p>
+        </div>
+        <form class="auth-form" id="authForm">
+          <label>
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required placeholder="you@example.com" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="${isSignUp ? "new-password" : "current-password"}" required minlength="6" placeholder="至少 6 位密码" />
+          </label>
+          ${authMessage ? `<p class="auth-message ${authMessage.type}">${escapeHtml(authMessage.text)}</p>` : ""}
+          <button class="primary full" type="submit" ${authBusy ? "disabled" : ""}>${authBusy ? "处理中..." : isSignUp ? "注册账号" : "登录"}</button>
+        </form>
+        <button class="secondary full" id="authModeToggle" type="button">
+          ${isSignUp ? "已有账号？去登录" : "还没有账号？注册一个"}
+        </button>
+      </section>
+    </main>
+  `;
+}
+
+function getUserEmail() {
+  return currentSession?.user?.email || "已登录";
 }
 
 function renderNavigation() {
@@ -1068,6 +1095,14 @@ function renderQuiz() {
 }
 
 function bindEvents() {
+  document.querySelector("#authForm")?.addEventListener("submit", submitAuthForm);
+  document.querySelector("#authModeToggle")?.addEventListener("click", () => {
+    authMode = authMode === "sign-in" ? "sign-up" : "sign-in";
+    authMessage = null;
+    render();
+  });
+  document.querySelector("#signOutBtn")?.addEventListener("click", signOut);
+
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       activeView = button.dataset.view;
@@ -2064,7 +2099,7 @@ function makeMergeImportPlan(backup) {
     nextProgress,
     afterCustomCount: nextCustomWords.length,
     afterProgressCount: Object.keys(nextProgress).length,
-    afterTotalCount: starterVocabulary.length + builtInPackVocabulary.length + nextCustomWords.length
+    afterTotalCount: starterVocabulary.length + nextCustomWords.length
   };
 }
 
@@ -2085,7 +2120,7 @@ function makeRestoreImportPlan(backup) {
     nextProgress,
     afterCustomCount: nextCustomWords.length,
     afterProgressCount: Object.keys(nextProgress).length,
-    afterTotalCount: starterVocabulary.length + builtInPackVocabulary.length + nextCustomWords.length
+    afterTotalCount: starterVocabulary.length + nextCustomWords.length
   };
 }
 
@@ -2209,5 +2244,90 @@ function cleanImportedText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function initAuth() {
+  if (!window.vocabCloud?.isAvailable) {
+    authReady = true;
+    render();
+    return;
+  }
+
+  try {
+    const { data, error } = await window.vocabCloud.getSession();
+    if (error) throw error;
+    currentSession = data.session;
+  } catch (error) {
+    authMessage = {
+      type: "error",
+      text: error.message || "登录状态检查失败。"
+    };
+  } finally {
+    authReady = true;
+    render();
+  }
+
+  window.vocabCloud.onAuthStateChange((_event, session) => {
+    currentSession = session;
+    authMessage = null;
+    authBusy = false;
+    render();
+  });
+}
+
+async function submitAuthForm(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const email = String(data.get("email") || "").trim();
+  const password = String(data.get("password") || "");
+
+  if (!email || password.length < 6) {
+    authMessage = { type: "error", text: "请输入邮箱和至少 6 位密码。" };
+    render();
+    return;
+  }
+
+  authBusy = true;
+  authMessage = null;
+  render();
+
+  try {
+    const result =
+      authMode === "sign-up"
+        ? await window.vocabCloud.signUp(email, password)
+        : await window.vocabCloud.signIn(email, password);
+
+    if (result.error) throw result.error;
+
+    currentSession = result.data.session || currentSession;
+    authMessage = {
+      type: "success",
+      text:
+        authMode === "sign-up" && !result.data.session
+          ? "注册成功。请去邮箱点确认链接，然后回来登录。"
+          : "登录成功。"
+    };
+    form.reset();
+  } catch (error) {
+    authMessage = {
+      type: "error",
+      text: error.message || "登录失败，请检查邮箱和密码。"
+    };
+  } finally {
+    authBusy = false;
+    render();
+  }
+}
+
+async function signOut() {
+  authBusy = true;
+  try {
+    await window.vocabCloud.signOut();
+  } finally {
+    currentSession = null;
+    authBusy = false;
+    render();
+  }
+}
+
 render();
-loadBuiltInCsvPacks();
+initAuth();

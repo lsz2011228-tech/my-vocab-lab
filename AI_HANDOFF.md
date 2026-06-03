@@ -18,6 +18,7 @@ Help a Year 9 student newly studying in Australia build practical school English
 - Visual asset: `assets/study-banner.png`
 - Generated CSV word packs: `word-packs/`
 - Utility files:
+  - `src/utils/cloud.js`: Supabase URL, publishable key, and auth helpers
   - `src/utils/html.js`: `escapeHtml`
   - `src/utils/storage.js`: `loadJson`, `saveJson`
   - `src/utils/wordForms.js`: word family helpers and labels
@@ -41,6 +42,9 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 ## Important behavior
 
 - Progress and custom words are saved to browser `localStorage`.
+- Supabase email/password auth is connected as a login gate. Users must sign in before entering the app.
+- `src/utils/cloud.js` uses the project URL `https://aahrmanmulxjxjttfboj.supabase.co` and a publishable key. Never put a Supabase `secret`, `service_role`, or database password in frontend files.
+- Cloud database sync is not implemented yet; after login, custom words and progress still save to browser `localStorage`.
 - The published app now opens with 277 built-in words: 77 starter words plus 200 generated extra-pack words.
 - Built-in vocabulary entries must keep stable unique `id` values.
 - User-created words are stored separately from the starter pack.
@@ -73,7 +77,7 @@ The current UI is intentionally app-like rather than a landing page: Home is a d
 4. Add optional real dictionary audio if browser speech quality is not enough.
 5. Add spaced repetition dates.
 6. Add mobile install/PWA support.
-7. Later, add GitHub backup, cloud storage, or account login if the user wants sync.
+7. Add Supabase database tables and RLS policies for custom-word/progress sync.
 
 ## Style guidance
 
